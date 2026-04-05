@@ -24,6 +24,7 @@ import (
 	gctxstore "github.com/kyverno/kyverno/pkg/globalcontext/store"
 	"github.com/kyverno/kyverno/pkg/metrics"
 	reportutils "github.com/kyverno/kyverno/pkg/utils/report"
+	"github.com/kyverno/sdk/extensions/imagedataloader"
 	"go.uber.org/multierr"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -46,6 +47,7 @@ type scanner struct {
 	gctxStore     gctxstore.Store
 	mapper        meta.RESTMapper
 	typeConverter patch.TypeConverterManager
+	registryOpts  []imagedataloader.Option
 }
 
 type ScanResult struct {
@@ -76,6 +78,7 @@ func NewScanner(
 	gctxStore gctxstore.Store,
 	mapper meta.RESTMapper,
 	typeConverter patch.TypeConverterManager,
+	registryOpts []imagedataloader.Option,
 ) Scanner {
 	return &scanner{
 		logger:        logger,
@@ -86,6 +89,7 @@ func NewScanner(
 		gctxStore:     gctxStore,
 		mapper:        mapper,
 		typeConverter: typeConverter,
+		registryOpts:  registryOpts,
 	}
 }
 
@@ -286,7 +290,7 @@ func (s *scanner) ScanResource(
 				func(name string) *corev1.Namespace { return ns },
 				matching.NewMatcher(),
 				s.client.GetKubeClient().CoreV1().Secrets(config.KyvernoNamespace()),
-				nil,
+				s.registryOpts,
 			), metrics.BackgroundScan)
 			request := celengine.Request(
 				libs.GetLibsCtx(),

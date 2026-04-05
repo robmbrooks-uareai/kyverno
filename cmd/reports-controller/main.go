@@ -30,6 +30,7 @@ import (
 	"github.com/kyverno/kyverno/pkg/logging"
 	kubeutils "github.com/kyverno/kyverno/pkg/utils/kube"
 	reportutils "github.com/kyverno/kyverno/pkg/utils/report"
+	"github.com/kyverno/sdk/extensions/imagedataloader"
 	openreportsclient "github.com/openreports/reports-api/pkg/client/clientset/versioned/typed/openreports.io/v1alpha1"
 	apiserver "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -162,6 +163,13 @@ func createReportControllers(
 		if backgroundScan {
 			restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(client.GetKubeClient().Discovery()))
 
+			// Build registry options for IVPOL background scans from the
+			// --registryCredentialHelpers flag (e.g. "default,azure").
+			var registryOpts []imagedataloader.Option
+			if helpers := internal.RegistryCredentialHelpers(); helpers != "" {
+				registryOpts = append(registryOpts, imagedataloader.WithCredentialProviders(strings.Split(helpers, ",")...))
+			}
+
 			backgroundScanController := backgroundscancontroller.NewController(
 				client,
 				kyvernoClient,
@@ -194,6 +202,7 @@ func createReportControllers(
 				gcstore,
 				restMapper,
 				typeConverter,
+				registryOpts,
 			)
 			ctrls = append(ctrls, internal.NewController(
 				backgroundscancontroller.ControllerName,

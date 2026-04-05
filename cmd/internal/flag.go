@@ -307,6 +307,10 @@ func ExceptionNamespace() string {
 	return exceptionNamespace
 }
 
+func RegistryCredentialHelpers() string {
+	return registryCredentialHelpers
+}
+
 func PolicyExceptionEnabled() bool {
 	return enablePolicyException
 }

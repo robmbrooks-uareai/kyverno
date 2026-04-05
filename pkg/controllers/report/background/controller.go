@@ -32,6 +32,7 @@ import (
 	controllerutils "github.com/kyverno/kyverno/pkg/utils/controller"
 	datautils "github.com/kyverno/kyverno/pkg/utils/data"
 	reportutils "github.com/kyverno/kyverno/pkg/utils/report"
+	"github.com/kyverno/sdk/extensions/imagedataloader"
 	openreportsv1alpha1 "github.com/openreports/reports-api/apis/openreports.io/v1alpha1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	admissionregistrationv1alpha1 "k8s.io/api/admissionregistration/v1alpha1"
@@ -109,6 +110,7 @@ type controller struct {
 
 	mapper        meta.RESTMapper
 	typeConverter patch.TypeConverterManager
+	registryOpts  []imagedataloader.Option
 }
 
 func NewController(
@@ -143,6 +145,7 @@ func NewController(
 	gctxStore gctxstore.Store,
 	mapper meta.RESTMapper,
 	typeConverter patch.TypeConverterManager,
+	registryOpts []imagedataloader.Option,
 ) controllers.Controller {
 	ephrInformer := metadataFactory.ForResource(reportsv1.SchemeGroupVersion.WithResource("ephemeralreports"))
 	cephrInformer := metadataFactory.ForResource(reportsv1.SchemeGroupVersion.WithResource("clusterephemeralreports"))
@@ -171,6 +174,7 @@ func NewController(
 		gctxStore:          gctxStore,
 		mapper:             mapper,
 		typeConverter:      typeConverter,
+		registryOpts:       registryOpts,
 	}
 	if vpolInformer != nil {
 		c.vpolLister = vpolInformer.Lister()
@@ -684,7 +688,7 @@ func (c *controller) reconcileReport(
 			}
 		}
 		if full || reevaluate || actual[reportutils.PolicyLabel(policy)] != policy.GetResourceVersion() {
-			scanner := utils.NewScanner(logger, c.engine, c.config, c.jp, c.client, c.gctxStore, c.mapper, c.typeConverter)
+			scanner := utils.NewScanner(logger, c.engine, c.config, c.jp, c.client, c.gctxStore, c.mapper, c.typeConverter, c.registryOpts)
 			for _, result := range scanner.ScanResource(ctx, *target, gvr, "", ns, vapBindings, mapBindings, celexceptions, policy) {
 				if result.Error != nil {
 					return result.Error
